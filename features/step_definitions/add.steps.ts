@@ -1,6 +1,6 @@
 import { equal } from "node:assert";
 import { Given, When, Then } from "@cucumber/cucumber";
-import { add } from "../../src/index.ts";
+import { add } from "../../src/core.ts";
 
 Given("I have a number {int}", function (number: number) {
 	this.a = number;

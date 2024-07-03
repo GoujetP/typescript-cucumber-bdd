@@ -1,7 +1,7 @@
 import { equal } from "node:assert";
 
 import { When, Then } from "@cucumber/cucumber";
-import { sayHello } from "../../src/index.ts";
+import { sayHello } from "../../src/core.ts";
 
 interface MyWorld {
 	whatIHeard: string;
