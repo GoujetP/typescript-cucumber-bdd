@@ -20,11 +20,11 @@ export const makeHttpsRequest = (url: string): Promise<any> => {
 					const parsedData = JSON.parse(data);
 					resolve(parsedData); // Resolve the promise with the parsed data
 				} catch (error) {
-					reject("Error parsing JSON: " + error);
+					reject(new Error(`Error parsing JSON: ${error}`));
 				}
 			});
 		}).on("error", (err) => {
-			reject("Error: " + err.message);
+			reject(new Error(`Error: ${err.message}`));
 		});
 	});
 };
