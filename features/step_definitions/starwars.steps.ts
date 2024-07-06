@@ -28,7 +28,7 @@ Given("I have the character ID {int}", function (characterId: number) {
 });
 
 When("I retrieve the character", async function () {
-	const response = await makeHttpsRequest(
+	const response = await makeHttpsRequest<CharacterDetails>(
 		`https://swapi.dev/api/people/${this.characterId}/`,
 	);
 	characterDetails = response;

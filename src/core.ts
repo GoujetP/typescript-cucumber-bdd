@@ -1,13 +1,10 @@
-import { createInterface } from "node:readline";
 import { get } from "node:https";
 
 export const sayHello = () => "hello";
 export const add = (a: number, b: number) => a + b;
 
-// HTTPS request function with prettified JSON output
-// In index.ts
-export const makeHttpsRequest = (url: string): Promise<any> => {
-	return new Promise((resolve, reject) => {
+export const makeHttpsRequest = <T>(url: string): Promise<T> =>
+	new Promise((resolve, reject) => {
 		get(url, (res) => {
 			let data = "";
 
@@ -17,8 +14,8 @@ export const makeHttpsRequest = (url: string): Promise<any> => {
 
 			res.on("end", () => {
 				try {
-					const parsedData = JSON.parse(data);
-					resolve(parsedData); // Resolve the promise with the parsed data
+					const parsedData: T = JSON.parse(data);
+					resolve(parsedData);
 				} catch (error) {
 					reject(new Error(`Error parsing JSON: ${error}`));
 				}
@@ -27,4 +24,3 @@ export const makeHttpsRequest = (url: string): Promise<any> => {
 			reject(new Error(`Error: ${err.message}`));
 		});
 	});
-};
