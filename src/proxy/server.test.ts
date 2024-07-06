@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { IncomingMessage, ServerResponse } from "node:http";
 import { handleRequest } from "./proxy";
 import { server } from "./server";
+import { Socket } from "node:net";
 
 vi.mock("./proxy", () => ({
 	handleRequest: vi
@@ -15,16 +16,22 @@ vi.mock("./proxy", () => ({
 					process.nextTick(() => res.emit("finish")); // Ensure 'finish' is emitted asynchronously
 					resolve();
 				} catch (error) {
-					reject(new Error(error));
+					reject(new Error(String(error)));
 				}
 			});
 		}),
 }));
 
 describe("server", () => {
+	// Create a dummy/mock Socket object
+	const dummySocket = new Socket();
+	const mockReq = new IncomingMessage(dummySocket); // Use the dummy Socket
+	mockReq.url = "/test/path";
+	const mockRes = new ServerResponse(mockReq);
 	it("should create a server that calls the mocked handleRequest successfully", async () => {
 		// Arrange
-		const mockReq = new IncomingMessage(null);
+		const dummySocket = new Socket(); // Use a dummy Socket instead of null
+		const mockReq = new IncomingMessage(dummySocket);
 		mockReq.url = "/test/path";
 		const mockRes = new ServerResponse(mockReq);
 
@@ -45,7 +52,8 @@ describe("server", () => {
 
 	it("should handle errors gracefully when handleRequest fails", async () => {
 		// Arrange
-		const mockReq = new IncomingMessage(null);
+		const dummySocket = new Socket(); // Use a dummy Socket instead of null
+		const mockReq = new IncomingMessage(dummySocket);
 		mockReq.url = "/test/path";
 		const mockRes = new ServerResponse(mockReq);
 

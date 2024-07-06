@@ -42,8 +42,6 @@ describe("Proxy Server", () => {
 		const mockRes = new ServerResponse(mockReq);
 		const writeHeadSpy = vi.spyOn(mockRes, "writeHead");
 		const endSpy = vi.spyOn(mockRes, "end");
-
-		// Mock makeHttpsRequest to throw an error
 		vi.mocked(makeHttpsRequest).mockRejectedValueOnce(
 			new Error("Failed to fetch data"),
 		);
