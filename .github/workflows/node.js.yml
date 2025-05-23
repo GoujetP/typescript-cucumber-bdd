@@ -1,42 +1,48 @@
-name: Simple CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [ "main", "master", "develop" ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ "main", "master", "develop" ]
+    branches: [main, master, develop]
+
+env:
+  NODE_VERSION: '20.11.0'
 
 jobs:
-  build-test-artifact:
+  build-test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Use Node.js 20.11.0
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.11.0'
-        cache: 'npm' # Utilise le cache npm
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-    - name: Install dependencies
-      # Utilise --legacy-peer-deps si nécessaire en raison de conflits (comme avec TypeDoc/TypeScript)
-      run: npm ci --legacy-peer-deps
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
 
-    - name: Build
-      run: npm run build
+      - name: Build application
+        run: npm run build
 
-    - name: Run unit tests with coverage
-      run: npm run test:coverage
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
 
-    - name: Run BDD tests
-      run: npm run test:report
+      - name: Run BDD tests
+        run: npm run test:report
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-and-test-results
-        path: |
-          dist/
-          coverage/
-          cucumber-report.json
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-and-test-results
+          path: |
+            dist/
+            coverage/
+            cucumber-report.json
+          retention-days: 7
