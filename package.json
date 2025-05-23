@@ -9,10 +9,10 @@
 		"eslint": "^8.57.0",
 		"@typescript-eslint/parser": "^7.1.0",
 		"@typescript-eslint/eslint-plugin": "^7.1.0",
-		"typedoc": "^0.25.8"
+		"typedoc": "^0.25.13"
 	},
 	"peerDependencies": {
-		"typescript": "^5.5.3"
+		"typescript": "^5.4.3"
 	},
 	"scripts": {
 		"build": "tsc",
