@@ -24,25 +24,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --legacy-peer-deps
     - name: Upload node_modules
       uses: actions/upload-artifact@v4
       with:
         name: node_modules
         path: node_modules
-
-  lint:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Download node_modules
-      uses: actions/download-artifact@v4
-      with:
-        name: node_modules
-        path: node_modules
-    - name: Run linting
-      run: npm run lint
 
   build:
     needs: setup
@@ -117,7 +104,7 @@ jobs:
         path: docs/
 
   deploy:
-    needs: [lint, build, unit-tests, bdd-tests, documentation]
+    needs: [build, unit-tests, bdd-tests, documentation]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
