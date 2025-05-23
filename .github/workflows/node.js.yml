@@ -1,4 +1,4 @@
-name: Multi-Job CI
+name: Multi-Job CI (Re-install deps)
 
 on:
   push:
@@ -7,7 +7,10 @@ on:
     branches: [ "main", "master", "develop" ]
 
 jobs:
-  setup:
+  # Pas de job 'setup' dédié à l'installation et l'upload de node_modules
+  # Chaque job installera ses propres dépendances, en utilisant le cache
+
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -15,39 +18,15 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.11.0'
-        cache: 'npm'
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+        cache: 'npm' # Active le cache ici
+
     - name: Install dependencies
       # Utilise --legacy-peer-deps si nécessaire
       run: npm ci --legacy-peer-deps
-    - name: Upload node_modules
-      uses: actions/upload-artifact@v4
-      with:
-        name: node_modules
-        path: node_modules
 
-  build:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.11.0'
-    - name: Download node_modules
-      uses: actions/download-artifact@v4
-      with:
-        name: node_modules
-        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
     - name: Build
       run: npm run build
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -55,7 +34,8 @@ jobs:
         path: dist/
 
   unit-tests:
-    needs: setup
+    # Dépend du build pour s'assurer que la compilation est passée
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -63,21 +43,30 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.11.0'
-    - name: Download node_modules
+        cache: 'npm' # Active le cache ici
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Download build artifacts # Si les tests ont besoin des fichiers compilés
       uses: actions/download-artifact@v4
       with:
-        name: node_modules
-        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+        name: build
+        path: dist/ # Assurez-vous que le chemin est correct
+
     - name: Run unit tests
       run: npm run test:coverage
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       with:
         name: unit-test-results
         path: coverage/
 
+
   bdd-tests:
-    needs: setup
+    # Dépend du build pour s'assurer que la compilation est passée
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -85,21 +74,31 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.11.0'
-    - name: Download node_modules
+        cache: 'npm' # Active le cache ici
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Download build artifacts # Si les tests BDD ont besoin des fichiers compilés
       uses: actions/download-artifact@v4
       with:
-        name: node_modules
-        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+        name: build
+        path: dist/ # Assurez-vous que le chemin est correct
+
     - name: Run BDD tests
       run: npm run test:report
+
     - name: Upload BDD test results
       uses: actions/upload-artifact@v4
       with:
         name: bdd-test-results
         path: cucumber-report.json
 
+
   documentation:
-    needs: setup
+    # Peut dépendre du build si la documentation se base sur le code compilé
+    # Si la documentation se base uniquement sur le code source, needs: checkout suffirait presque
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -107,31 +106,50 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.11.0'
-    - name: Download node_modules
-      uses: actions/download-artifact@v4
-      with:
-        name: node_modules
-        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+        cache: 'npm' # Active le cache ici
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
     - name: Generate documentation
       run: npm run docs
+
     - name: Upload documentation
       uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: docs/
 
+
   deploy:
-    needs: [build, unit-tests, bdd-tests, documentation]
+    # Dépend des jobs qui génèrent les artefacts nécessaires au déploiement
+    needs: [build, unit-tests, bdd-tests, documentation] # Ajustez si certains artefacts ne sont pas nécessaires au déploiement
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
     - uses: actions/checkout@v4
-    - name: Download all artifacts
+    # Si le déploiement nécessite les dépendances, ajouter actions/setup-node et npm ci ici
+
+    - name: Download necessary artifacts # Télécharge uniquement les artefacts dont le déploiement a besoin
       uses: actions/download-artifact@v4
       with:
-        path: artifacts # Télécharge tous les artefacts dans un sous-dossier 'artifacts'
-    - name: List artifacts
-      run: ls -R artifacts
+        # Listez les noms des artefacts nécessaires
+        name: build
+        path: . # ou un sous-dossier spécifique si nécessaire
+
+    # Télécharger d'autres artefacts si nécessaire, par exemple:
+    #- name: Download other artifacts
+    #  uses: actions/download-artifact@v4
+    #  with:
+    #    name: documentation
+    #    path: ./docs_to_deploy
+
+    - name: List downloaded files (for debugging)
+      run: ls -R
+
     - name: Deploy (placeholder)
-      run: echo "Deployment would happen here"
-    # Si le déploiement utilise des scripts npm, ajouter actions/setup-node@v4 et télécharger node_modules ici aussi
+      # Adaptez cette étape à votre méthode de déploiement
+      run: |
+        echo "Deployment logic here"
+        # Exemple: Copier les fichiers du build vers un serveur, publier sur un service, etc.
+        # cp -R dist/ /path/to/deploy
