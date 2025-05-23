@@ -6,10 +6,12 @@
 		"ts-node": "^10.9.2",
 		"@types/node": "^20.14.9",
 		"vitest": "^1.6.0",
+		"@vitest/coverage-v8": "^1.6.0",
 		"eslint": "^8.57.0",
 		"@typescript-eslint/parser": "^7.1.0",
 		"@typescript-eslint/eslint-plugin": "^7.1.0",
-		"typedoc": "^0.25.13"
+		"typedoc": "^0.25.13",
+		"eslint-plugin-vitest": "^0.3.0"
 	},
 	"peerDependencies": {
 		"typescript": "^5.4.3"
@@ -21,8 +23,9 @@
 		"start": "bun run src/index.ts",
 		"start-server": "bun run src/proxy/index.ts",
 		"lint": "eslint . --ext .ts",
+		"lint:fix": "eslint . --ext .ts --fix",
 		"docs": "typedoc --out docs src",
-		"test:coverage": "vitest run --coverage --reporter verbose",
+		"test:coverage": "vitest run --coverage",
 		"test:report": "cucumber-js --format json:cucumber-report.json"
 	},
 	"type": "module"
