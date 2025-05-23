@@ -7,22 +7,15 @@ on:
     branches: [ "main", "master", "develop" ]
 
 jobs:
-  build-and-test:
+  setup:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [20.11.0]
-
     steps:
     - uses: actions/checkout@v4
-
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '20.11.0'
         cache: 'npm'
-
     - name: Cache dependencies
       uses: actions/cache@v3
       with:
@@ -30,39 +23,110 @@ jobs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
-
     - name: Install dependencies
       run: npm ci
+    - name: Upload node_modules
+      uses: actions/upload-artifact@v3
+      with:
+        name: node_modules
+        path: node_modules
 
-    - name: Lint
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download node_modules
+      uses: actions/download-artifact@v3
+      with:
+        name: node_modules
+        path: node_modules
+    - name: Run linting
       run: npm run lint
 
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download node_modules
+      uses: actions/download-artifact@v3
+      with:
+        name: node_modules
+        path: node_modules
     - name: Build
       run: npm run build
-
-    - name: Run unit tests
-      run: npm run test:coverage
-
-    - name: Run BDD tests
-      run: npm run test:report
-
-    - name: Generate documentation
-      run: npm run docs
-
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: build-artifacts
-        path: |
-          dist/
-          coverage/
-          docs/
+        name: build
+        path: dist/
 
+  unit-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download node_modules
+      uses: actions/download-artifact@v3
+      with:
+        name: node_modules
+        path: node_modules
+    - name: Run unit tests
+      run: npm run test:coverage
     - name: Upload test results
       uses: actions/upload-artifact@v3
-      if: always()
       with:
-        name: test-results
-        path: |
-          cucumber-report.json
-          coverage/
+        name: unit-test-results
+        path: coverage/
+
+  bdd-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download node_modules
+      uses: actions/download-artifact@v3
+      with:
+        name: node_modules
+        path: node_modules
+    - name: Run BDD tests
+      run: npm run test:report
+    - name: Upload BDD test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: bdd-test-results
+        path: cucumber-report.json
+
+  documentation:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download node_modules
+      uses: actions/download-artifact@v3
+      with:
+        name: node_modules
+        path: node_modules
+    - name: Generate documentation
+      run: npm run docs
+    - name: Upload documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: docs/
+
+  deploy:
+    needs: [lint, build, unit-tests, bdd-tests, documentation]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    - name: List artifacts
+      run: ls -R artifacts
+    - name: Deploy (placeholder)
+      run: echo "Deployment would happen here"
