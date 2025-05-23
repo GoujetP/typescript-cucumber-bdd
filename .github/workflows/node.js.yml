@@ -24,6 +24,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
     - name: Install dependencies
+      # Using --legacy-peer-deps pour gérer le conflit TypeDoc/TypeScript si nécessaire
       run: npm ci --legacy-peer-deps
     - name: Upload node_modules
       uses: actions/upload-artifact@v4
@@ -31,16 +32,22 @@ jobs:
         name: node_modules
         path: node_modules
 
+  # Le job lint a été retiré comme demandé précédemment
+
   build:
     needs: setup
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Use Node.js # Configure Node.js environment pour ce job
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
     - name: Download node_modules
       uses: actions/download-artifact@v4
       with:
         name: node_modules
-        path: node_modules
+        path: . # Télécharge node_modules à la racine du workspace
     - name: Build
       run: npm run build
     - name: Upload build artifacts
@@ -54,11 +61,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Use Node.js # Configure Node.js environment pour ce job
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
     - name: Download node_modules
       uses: actions/download-artifact@v4
       with:
         name: node_modules
-        path: node_modules
+        path: . # Télécharge node_modules à la racine du workspace
     - name: Run unit tests
       run: npm run test:coverage
     - name: Upload test results
@@ -72,11 +83,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Use Node.js # Configure Node.js environment pour ce job
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
     - name: Download node_modules
       uses: actions/download-artifact@v4
       with:
         name: node_modules
-        path: node_modules
+        path: . # Télécharge node_modules à la racine du workspace
     - name: Run BDD tests
       run: npm run test:report
     - name: Upload BDD test results
@@ -90,11 +105,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Use Node.js # Configure Node.js environment pour ce job
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
     - name: Download node_modules
       uses: actions/download-artifact@v4
       with:
         name: node_modules
-        path: node_modules
+        path: . # Télécharge node_modules à la racine du workspace
     - name: Generate documentation
       run: npm run docs
     - name: Upload documentation
@@ -104,6 +123,7 @@ jobs:
         path: docs/
 
   deploy:
+    # Met à jour les dépendances suite à la suppression du job lint
     needs: [build, unit-tests, bdd-tests, documentation]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -117,3 +137,4 @@ jobs:
       run: ls -R artifacts
     - name: Deploy (placeholder)
       run: echo "Deployment would happen here"
+    # Si le déploiement utilise des scripts npm, ajouter actions/setup-node@v4 ici aussi
