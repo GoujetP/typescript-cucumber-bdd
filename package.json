@@ -1,25 +1,137 @@
-{
-	"name": "typescript-cucumber-bdd",
-	"main": "src/index.ts",
-	"devDependencies": {
-		"@cucumber/cucumber": "^10.8.0",
-		"@types/node": "^20.14.9",
-		"@vitest/coverage-v8": "^1.6.1",
-		"ts-node": "^10.9.2",
-		"typedoc": "^0.25.13",
-		"vitest": "^1.6.1"
-	},
-	"peerDependencies": {
-	},
-	"scripts": {
-		"build": "tsc",
-		"test": "vitest",
-		"test:bdd": "cucumber-js",
-		"start": "bun run src/index.ts",
-		"start-server": "bun run src/proxy/index.ts",
-		"docs": "typedoc --out docs src",
-		"test:coverage": "vitest run --coverage",
-		"test:report": "cucumber-js --format json:cucumber-report.json"
-	},
-	"type": "module"
-}
+name: Multi-Job CI
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
+        cache: 'npm'
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    - name: Install dependencies
+      # Utilise --legacy-peer-deps si nécessaire
+      run: npm ci --legacy-peer-deps
+    - name: Upload node_modules
+      uses: actions/upload-artifact@v4
+      with:
+        name: node_modules
+        path: node_modules
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
+    - name: Download node_modules
+      uses: actions/download-artifact@v4
+      with:
+        name: node_modules
+        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+    - name: Build
+      run: npm run build
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build
+        path: dist/
+
+  unit-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
+    - name: Download node_modules
+      uses: actions/download-artifact@v4
+      with:
+        name: node_modules
+        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+    - name: Run unit tests
+      run: npm run test:coverage
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: unit-test-results
+        path: coverage/
+
+  bdd-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
+    - name: Download node_modules
+      uses: actions/download-artifact@v4
+      with:
+        name: node_modules
+        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+    - name: Run BDD tests
+      run: npm run test:report
+    - name: Upload BDD test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: bdd-test-results
+        path: cucumber-report.json
+
+  documentation:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.11.0'
+    - name: Download node_modules
+      uses: actions/download-artifact@v4
+      with:
+        name: node_modules
+        path: . # Télécharge à la racine pour que setup-node configure correctement le PATH
+    - name: Generate documentation
+      run: npm run docs
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: docs/
+
+  deploy:
+    needs: [build, unit-tests, bdd-tests, documentation]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts # Télécharge tous les artefacts dans un sous-dossier 'artifacts'
+    - name: List artifacts
+      run: ls -R artifacts
+    - name: Deploy (placeholder)
+      run: echo "Deployment would happen here"
+    # Si le déploiement utilise des scripts npm, ajouter actions/setup-node@v4 et télécharger node_modules ici aussi
