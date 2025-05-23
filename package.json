@@ -22,7 +22,7 @@
 		"start-server": "bun run src/proxy/index.ts",
 		"lint": "eslint . --ext .ts",
 		"docs": "typedoc --out docs src",
-		"test:coverage": "vitest run --coverage",
+		"test:coverage": "vitest run --coverage --reporter verbose",
 		"test:report": "cucumber-js --format json:cucumber-report.json"
 	},
 	"type": "module"
